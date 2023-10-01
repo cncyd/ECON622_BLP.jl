@@ -5,6 +5,8 @@ import Sobol: skip, SobolSeq
 import Base.Iterators: take, Repeated
 import HCubature: hcubature
 import LinearAlgebra: cholesky
+using QuadGK: quadgk          # for quadrature
+using SparseGrids             # assuming there's a package for sparse grids
 
 abstract type AbstractIntegrator end
 
@@ -51,5 +53,36 @@ function AdaptiveIntegrator(dist::AbstractMvNormal; eval=hcubature, options=())
     limits = (-ones(D), ones(D))
     AdaptiveIntegrator(hcubature,x,Dx,args, limits)
 end
+
+using FastGaussQuadrature, LinearAlgebra
+import Base.Iterators: product, repeated
+function ∫q(f, dx::MvNormal; ndraw=100)
+  n = Int(ceil(ndraw^(1/length(dx))))
+  x, w = gausshermite(n)
+  L = cholesky(dx.Σ).L
+  sum(f(√2*L*vcat(xs...) + dx.μ)*prod(ws)
+      for (xs,ws) ∈ zip(product(repeated(x, length(dx))...),
+                        product(repeated(w, length(dx))...))
+        )/(π^(length(dx)/2))
+end
+
+using SparseGrids
+function ∫sgq(f, dx::MvNormal; order=5)
+  X, W = sparsegrid(length(dx), order, gausshermite, sym=true)
+  L = cholesky(dx.Σ).L
+  sum(f(√2*L*x + dx.μ)*w for (x,w) ∈ zip(X,W))/(π^(length(dx)/2))
+end
+
+# Testing
+dist = Normal(0, 1)
+f(x) = x^2
+
+integrator = SparseGridQuadratureIntegrator(dist, 5)
+result = integrator(f)
+
+println("Sparse Grid Result: ", result)
+
+known_result = 1.0  # E[X^2] for standard normal
+println("Error for Sparse Grid: ", abs(result - known_result))
 
 end
