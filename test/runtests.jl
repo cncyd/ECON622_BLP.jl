@@ -1,7 +1,7 @@
 using Test
 
 @testset "integrator" begin
-    # include("../src/integrate.jl") # for interactive execution
+    include("../src/integrate.jl") # for interactive execution
     using Distributions
 
     dimx = 3
@@ -11,7 +11,7 @@ using Test
     ∫a = Integrate.AdaptiveIntegrator(dx, options=(rtol=1e-6,initdiv=3))        
     V = ∫a(x->x*x')
     @test isapprox(V, Σ, rtol=1e-5)
-    
+    f(x) = exp(x[1])/sum(exp.(x)) 
     val = ∫a(f)
     for N ∈ [1_000, 10_000, 100_000]
         ∫mc = Integrate.MonteCarloIntegrator(dx, N)
@@ -26,7 +26,7 @@ using Test
 end
 
 @testset "share=δ⁻¹"
-    # include("../src/blp.jl") 
+    include("../src/blp.jl") 
     using LinearAlgebra
     J = 4
     dimx=2
@@ -52,3 +52,17 @@ end
     @test isapprox(d, δ, rtol=1e-6)
     
 end
+
+
+@testset "1D Integrator Functions" begin
+    # Define a test function and its integral under standard normal distribution
+    f(x) = x^2
+    analytic_integral = 1.0 # For standard normal distribution
+
+    μ, σ = 0.0, 1.0
+    @test isapprox(∫q_1d(f, μ, σ, ndraw=100), analytic_integral, rtol=1e-5)
+    @test isapprox(∫sgq_1d(f, μ, σ, order=5), analytic_integral, rtol=1e-5)
+
+    # You can add more tests as needed
+end
+

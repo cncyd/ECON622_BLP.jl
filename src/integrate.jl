@@ -1,5 +1,6 @@
 module Integrate
- #hello 
+ 
+#hello 
 using Distributions
 import Sobol: skip, SobolSeq
 import Base.Iterators: take, Repeated
@@ -67,4 +68,6 @@ using SparseGrids
 function ∫sgq_1d(f, μ::Float64, σ::Float64; order=5)
     X, W = sparsegrid(1, order, gausshermite)
     sum(f(√2*σ*x[1] + μ) * w for (x, w) in zip(X, W)) / √π
+end
+
 end
