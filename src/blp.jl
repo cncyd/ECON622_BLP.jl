@@ -36,6 +36,7 @@ function share(δ, Σ, x, ∫::Integrate.AbstractIntegrator)
   return(∫(shareν))
 end
 
+
 function delta(s, Σ, x, ∫)
   function eqns!(F,δ) 
     F .= s - share(δ,Σ,x,∫)
@@ -47,5 +48,23 @@ function delta(s, Σ, x, ∫)
   end
   return(sol.zero)
 end
+
+
+# replace any share that's below a threshold (e.g., 1e-5) with the threshold value itself, but it is still have error
+function newdelta(s, Σ, x, ∫)
+  threshold = 1e-5
+  s_adj = replace(s, x->x < threshold => threshold) # Replace shares below threshold with threshold
+
+  function eqns!(F,δ) 
+      F .= s_adj - share(δ, Σ, x, ∫)
+  end
+  δ0 = log.(s_adj) .- log(1-sum(s_adj))
+  sol=NLsolve.nlsolve(eqns!, δ0, autodiff=:forward, method=:trust_region)
+  if (sol.residual_norm > 1e-4)
+      @warn "Possible problem in delta(s, ...)\n".*"$sol"
+  end
+  return(sol.zero)
+end
+
 
 end

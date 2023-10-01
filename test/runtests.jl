@@ -28,3 +28,18 @@ end
     
     @test isapprox(result, 2.0, atol=1e-5)
 end
+
+
+@testset "BLP module tests" begin
+    include("../src/blp.jl") # Include your module
+    using .BLP
+    
+    J = 10
+    dimx = 4
+    x = rand(J, dimx)
+    Σ = I + ones(dimx,dimx)
+    s = [1e-10; 0.2; 0.2; 0.2; 0.2; ones(J - 5) * 0.04] # Share vector with one value close to 0
+    ∫ = BLP.Integrate.QuasiMonteCarloIntegrator(MvNormal(dimx, 1.0), 1000)
+    
+    @test_throws ErrorException newdelta(s, Σ, x, ∫)
+end
