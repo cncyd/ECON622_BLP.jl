@@ -1,6 +1,5 @@
 module Integrate
  
-#hello 
 using Distributions
 import Sobol: skip, SobolSeq
 import Base.Iterators: take, Repeated
@@ -55,6 +54,7 @@ function AdaptiveIntegrator(dist::AbstractMvNormal; eval=hcubature, options=())
     AdaptiveIntegrator(hcubature,x,Dx,args, limits)
 end
 
+"""
 using FastGaussQuadrature, LinearAlgebra
 
 function ∫q_1d(f, μ::Float64, σ::Float64; ndraw=100)
@@ -69,5 +69,35 @@ function ∫sgq_1d(f, μ::Float64, σ::Float64; order=5)
     X, W = sparsegrid(1, order, gausshermite)
     sum(f(√2*σ*x[1] + μ) * w for (x, w) in zip(X, W)) / √π
 end
+"""
+#quadrature-gauss_legendre
+using FastGaussQuadrature
+function gauss_legendre_integral(f, a, b, n=10)
+    x, w = gausslegendre(n)  
+    transform(x) = 0.5 * ((b - a) * x + a + b)
+    integral = 0.5 * (b - a) * sum(w[i] * f(transform(x[i])) for i = 1:n)
 
+    return integral
+end
+
+#quadrature-Gauss-Hermite
+using FastGaussQuadrature, LinearAlgebra
+import Base.Iterators: product, repeated
+function ∫q(f, dx::MvNormal; ndraw=100)
+  n = Int(ceil(ndraw^(1/length(dx))))
+  x, w = gausshermite(n)
+  L = cholesky(dx.Σ).L
+  sum(f(√2*L*vcat(xs...) + dx.μ)*prod(ws)
+      for (xs,ws) ∈ zip(product(repeated(x, length(dx))...),
+                        product(repeated(w, length(dx))...))
+        )/(π^(length(dx)/2))
+end
+
+## Integration: Sparse Grid Quadrature
+using SparseGrids
+function ∫sgq(f, dx::MvNormal; order=5)
+  X, W = sparsegrid(length(dx), order, gausshermite, sym=true)
+  L = cholesky(dx.Σ).L
+  sum(f(√2*L*x + dx.μ)*w for (x,w) ∈ zip(X,W))/(π^(length(dx)/2))
+end
 end
